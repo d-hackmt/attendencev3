@@ -8,16 +8,18 @@ from pydantic import BaseModel
 from langgraph.graph import StateGraph
 from langchain_google_genai import ChatGoogleGenerativeAI
 from Attendence.core.logger import get_logger
+from langchain_groq import ChatGroq
 
 logger = get_logger(__name__)
 
 # --- LLM Setup ---
 # Note: Ensure GOOGLE_API_KEY is in .env or environment
 try:
-    gemini_llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
-        # temperature=0.5
+    gemini_llm = ChatGroq(
+    model_name = "llama-3.3-70b-versatile",
+    temperature=0.3
     )
+    
 except Exception:
     logger.warning("Failed to initialize ChatGoogleGenerativeAI. Check API Key.")
     gemini_llm = None
@@ -130,6 +132,37 @@ def normalize_dates_in_question(inputs: dict, df) -> dict:
 
     return {"question": question}
 
+# --- Prompt Builder ---
+def build_prompt(question: str, df: pd.DataFrame) -> str:
+    context_summary = generate_context_summary(df)
+    head_sample = df.head(3).to_string(index=False)
+    
+    return f"""
+You are a smart attendance assistant. You have access to a pandas DataFrame `df`.
+
+{context_summary}
+
+### Sample Data
+{head_sample}
+
+### Instructions
+1. **Analyze the User's Input**:
+   - If it is a **Greeting** (e.g., "hi", "hello") or **General Chat**, return `TEXT: <your friendly response>`.
+   - If it is a **Data Question**, return `CODE: <single line of pandas code>`.
+
+2. **Rules for Code**:
+   - Use `df` variable.
+   - Filter `date_cols` dynamically if needed.
+   - Return ONLY the code prefixed with `CODE:`.
+
+### Examples
+Q: Hi, who are you?
+A: TEXT: I am your Attendance Assistant. Ask me anything about class records!
+
+Q: {EXAMPLES}
+
+### User Input: {question}
+"""
 
 # --- Nodes ---
 def normalize_node(state: AppState, df) -> AppState:
@@ -147,38 +180,79 @@ def generate_code_node(state: AppState, df: pd.DataFrame) -> AppState:
         return AppState(question=state.question, code="", result="LLM not initialized.")
     try:
         prompt = build_prompt(state.question, df)
-        response = gemini_llm.invoke(prompt)
-        return AppState(question=state.question, code=response.content.strip())
+        response = gemini_llm.invoke(prompt).content.strip()
+        
+        # Intent Parsing
+        if response.startswith("TEXT:"):
+            # It's a greeting/conversational reply
+            text_reply = response.replace("TEXT:", "").strip()
+            return AppState(question=state.question, code=None, result=text_reply)
+        elif response.startswith("CODE:"):
+            code = response.replace("CODE:", "").strip()
+            # Remove any markdown backticks if present
+            code = code.replace("```python", "").replace("```", "").strip()
+            return AppState(question=state.question, code=code)
+        else:
+            # Fallback: Assume it's code if it looks like code, else text
+            if "df" in response or "pd." in response:
+                return AppState(question=state.question, code=response)
+            return AppState(question=state.question, code=None, result=response)
+            
     except Exception as e:
         logger.exception("Error in generate_code_node")
         return AppState(question=state.question, code="", result=f"LLM Error: {e}")
 
 def execute_code_node(state: AppState, df: pd.DataFrame) -> AppState:
     if not state.code:
-         # Propagate previous error if any
-        return AppState(question=state.question, result=state.result or "No code generated.")
+        # No code to execute (was a greeting or error)
+        return AppState(question=state.question, code=None, result=state.result)
     try:
-        # unsafe eval - but user requested restricted env
-        result = eval(state.code, {"df": df.copy()})
+        # Unsafe eval (as per user request domain)
+        result = eval(state.code, {"df": df.copy(), "pd": pd, "re": re})
         return AppState(question=state.question, code=state.code, result=result)
     except Exception as e:
         return AppState(question=state.question, code=state.code, result=f"ERROR executing code: {str(e)}")
 
 def format_response(state: AppState) -> AppState:
+    """
+    Synthesizes a final natural language response using the LLM.
+    """
     question = state.question
     result = state.result
+    
+    # If the result is an error, just return it
+    if isinstance(result, str) and (result.startswith("ERROR") or "Error" in result or "Traceback" in result):
+         return AppState(question=question, result=result, answer=f"❌ I encountered an issue: {result}")
 
-    # Generate new answer string
-    if isinstance(result, str) and (result.startswith("ERROR") or result.startswith("⚠️")):
-        new_answer = f"❌ Failed to answer: {result}"
-    elif isinstance(result, (int, float, str, bool)) or hasattr(result, "__str__"):
-        new_answer = f"📊 Answer to: '{question}' is → {result}"
-    else:
-        new_answer = f"✅ Answer to your question: '{question}'\n\n{result}"
+    # If we already have a text result (from greeting), refine it or pass through
+    if not state.code and isinstance(result, str):
+         # It was a greeting, just ensure it's clean
+         return AppState(question=question, result=result, answer=result)
 
-    # Create new state with updated answer (override old answer)
+    # Synthesis Prompt
+    summary_prompt = f"""
+    You are an AI assistant summarizing data results.
+    
+    **User's Question**: "{question}"
+    **Raw Data Result**: {result}
+    
+    **Task**: Write a helpful, natural language response.
+    - Do NOT repeat the question.
+    - Be concise but friendly.
+    - If the result is a list of names, list them clearly.
+    - If the result is a number, explain what it means.
+    
+    **Response**:
+    """
+    
+    try:
+        final_answer = gemini_llm.invoke(summary_prompt).content.strip()
+    except Exception:
+        final_answer = str(result)
+
+    # Update state
     state_dict = state.model_dump()
-    state_dict["answer"] = new_answer
+    state_dict["answer"] = final_answer
     return AppState(**state_dict)
 
 
