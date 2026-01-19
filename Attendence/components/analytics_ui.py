@@ -97,7 +97,7 @@ def show_analytics_panel():
                 ax.axis("equal")
                 # Transparent background
                 fig.patch.set_alpha(0)
-                st.pyplot(fig, use_container_width=False)
+                st.pyplot(fig, width="content")
             else:
                 st.info("No data")
         except Exception:

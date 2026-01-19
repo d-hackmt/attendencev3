@@ -1,143 +1,105 @@
-This is the beginning of my project lets goo
+# 🧠 Smart Attendance System
 
-to make virtual environment we used uv
+A scalable, modular, and performance-optimized web-based attendance tracking system. Built with **Streamlit**, **Supabase**, and **LangChain**, it offers role-based panels for Admins and Students with real-time syncing and AI-powered insights.
 
-```
-uv init
-```
+---
 
-```
-uv venv venv
-```
+## 🏗️ Architecture
+
+The project follows a clean **Service-Oriented Architecture (SOA)**:
 
 ```text
 Attendence/
+├── components/          → UI Layer (Streamlit Views)
+│   ├── admin_ui.py      → Admin Dashboard
+│   ├── student_ui.py    → Student Portal & Dashboard
+│   ├── analytics_ui.py  → High-level Analytics & Charts
+│   └── chatbot_ui.py    → AI Chat Interface
 │
-├── admin.py              → Admin dashboard logic
-├── analytics.py          → Attendance analytics
-├── clients.py            → Supabase client builder
-├── config.py             → Environment/config loader
-├── logger.py             → Central logging system
-├── student.py            → Student attendance UI + logic
-├── supabase_client.py    → (deprecated now, merged into clients)
-├── utils.py              → Shared helpers (dates, etc.)
+├── services/            → Business Logic Layer
+│   ├── attendance_service.py → Core attendance operations
+│   ├── class_service.py      → Class management (CRUD)
+│   ├── chatbot_service.py    → AI Agent logic (LangGraph)
+│   ├── auth_service.py       → Authentication
+│   └── github_service.py     → Data export/sync
 │
-├── admin_main.py         → Streamlit entry for admin
-├── student_main.py       → Streamlit entry for student
-│
-├── logs/
-│   └── app.log           → Combined logs
-│
-├── records/              → CSV exports for admin analytics
-│
-├── pyproject.toml        → Project dependencies
-├── requirements.txt      → For pip installs
-├── versions.py           → Prints package versions
+└── core/                → Utilities & Configuration
+    ├── clients.py       → Database & API Clients (Cached)
+    ├── config.py        → Env vars
+    └── logger.py        → Logging
 ```
-
-### How real logs look like
-
-```text
-
-2025-12-01 20:15:32,891 | INFO | Attendence.student | student.py:45 | show_student_panel() | Fetching open classes from Supabase…
-
-2025-12-01 20:15:33,104 | DEBUG | Attendence.clients | clients.py:22 | create_supabase_client() | Supabase client initialized successfully.
-
-2025-12-01 20:15:33,982 | ERROR | Attendence.student | student.py:78 | show_student_panel() | Failed to fetch roll map
-
-2025-12-01 20:15:33,982 | ERROR | Attendence.student | student.py:78 | show_student_panel() | Traceback (most recent call last):
-
-2025-12-01 20:15:33,982 | ERROR | Attendence.student | student.py:78 | show_student_panel() |   File "Attendence/student.py", line 65, in show_student_panel
-
-2025-12-01 20:15:33,982 | ERROR | Attendence.student | student.py:78 | show_student_panel() |     roll_map_response = supabase.table("roll_map")...
-
-2025-12-01 20:15:33,982 | ERROR | Attendence.student | student.py:78 | show_student_panel() | postgrest.exceptions.APIError: invalid input syntax for integer: ""
-
-2025-12-01 20:15:34,120 | WARNING | Attendence.admin | admin.py:102 | toggle_classroom() | Classroom '8 C' was already open.
-
-2025-12-01 20:15:34,982 | INFO | Attendence.admin | admin.py:150 | download_attendance_report() | Report generated: attendance_matrix_8C_20251201.csv
-
-
-```
-
-
-
-# 🧠 Smart Attendance System
-
-A modular and secure web-based attendance tracking system for classrooms, built using **Streamlit**, **Supabase**, and **GitHub**. The system supports **role-based access** with separate panels for **Admins** and **Students**.
 
 ---
 
-## 🔐 Admin Panel
+## 🚀 Key Features
 
-> 🔓 Accessible only with valid admin credentials
+### 🔐 Admin Panel
+> Run via: `streamlit run admin_main.py`
 
-### 📚 Class Management
+*   **Class Management**: Create, delete, and manage classes.
+*   **Live Controls**: Open/Close attendance instantly.
+*   **Analytics Dashboard**:
+    *   High-level metrics (Total Students, Average Attendance).
+    *   Interactive charts (Donut Chart, Bar Graph).
+    *   Top/Bottom performing students.
+*   **AI Chatbot**: Query attendance data using natural language (e.g., *"Who has less than 75% attendance?"*).
+*   **Data Export**: 1-click export to CSV or push specifically to GitHub.
 
-* ➕ **Create Class** with default code and daily attendance limit
-* 📂 **Select and Manage Classes**
-* ⚙️ **Update Attendance Code & Daily Limit**
-* 🔃 **Toggle Attendance Status** (Open/Close)
-* 🚫 Only **one class** can be open for attendance at a time
+### 🎓 Student Portal
+> Run via: `streamlit run student_main.py`. Note: The student panel auto-refreshes to show new classes.
 
-### 📈 Attendance Matrix
-
-* 📊 View attendance in a **date-wise pivot table**
-* ✅ "P" entries marked in green | ❌ "A" entries marked in red
-* ⬇️ **Download matrix as CSV**
-* 🚀 **Push CSV to GitHub repository** (auto-commits with timestamped filenames)
-
-### 🗑️ Delete Class
-
-* Permanently deletes:
-
-  * Class settings
-  * Attendance records
-  * Roll-number mappings
-* ❗ Requires `"DELETE"` confirmation to proceed
+*   **Secure Submission**: Mark attendance only when a class is **Open**.
+*   **Visual Dashboard**:
+    *   **Live Sync**: "Refresh" button to fetch the latest class status.
+    *   **Personal Analytics**: Donut chart showing "Present vs Absent" %.
+    *   **History**: Detailed table of all past attendance records.
+*   **Validation**: Prevents duplicate entries and verifies attendance codes.
 
 ---
 
-## 🎓 Student Panel
+## ⚡ Performance Optimizations
 
-> 🧑‍🎓 No login required — attendance can only be marked when a class is **open**
+*   **Intelligent Caching**: Database connections and heavy queries are cached (`st.cache_resource`, `st.cache_data`) for instant UI response.
+*   **Auto-Invalidation**: Caches clear automatically when data changes (e.g., opening a class, submitting attendance), ensuring *fresh* data without manual reloads.
 
-### 📝 Submit Attendance
+---
 
-* 🔍 **Select open class**
-* 🧾 **Enter Roll Number & Name**
+## 🛠️ Installation & Setup
 
-  * Name gets **locked to roll number** after first submission
-* 🔐 **Enter Valid Attendance Code**
-* ❌ Blocked if:
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/your-repo/smart-attendance.git
+    cd smart-attendance
+    ```
 
-  * Wrong code is entered
-  * Student already marked attendance for the day
-  * Class has reached its daily attendance limit
+2.  **Install Dependencies**
+    Using `uv` (recommended) or `pip`:
+    ```bash
+    uv venv venv
+    uv pip install -e .
+    ```
 
-### 📋 View Personal Attendance
+3.  **Environment Variables**
+    Create a `.env` file (or use Streamlit secrets):
+    ```ini
+    SUPABASE_URL=your_url
+    SUPABASE_KEY=your_key
+    GITHUB_TOKEN=your_token
+    GOOGLE_API_KEY=your_gemini_key
+    ```
 
-* 🧑‍💼 **Displays only student's own records**
-* 📅 Shows attendance across all dates in a structured table
-* ✅ Filtered view ensures data privacy and focus
+4.  **Run the Applications**
+    *   **Admin**: `streamlit run admin_main.py`
+    *   **Student**: `streamlit run student_main.py`
 
 ---
 
 ## ⚙️ Tech Stack
 
-| Layer         | Technology       |
-| ------------- | ---------------- |
-| Frontend      | Streamlit        |
-| Database      | Supabase         |
-| Backend Logic | Python + Pandas  |
-| Storage       | GitHub API (CSV) |
-| Visualization | Matplotlib       |
-
----
-
-## ✅ Highlights
-
-* Clean and role-based user interface
-* GitHub-integrated data export for version tracking
-* Real-time data validation and status checks
-* Modular structure for easy extension and maintenance
+| Layer | Technology | Usage |
+| :--- | :--- | :--- |
+| **Frontend** | Streamlit | Responsive UI Components |
+| **Database** | Supabase | Real-time structured data |
+| **Logic** | Python 3.10+ | Core Application Logic |
+| **AI** | LangChain + Gemini | Data Analysis Chatbot |
+| **Viz** | Matplotlib | Custom Analytics Charts |

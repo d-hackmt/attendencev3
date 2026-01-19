@@ -194,13 +194,14 @@ def show_view_attendance_panel():
                     [present_count, absent_count], 
                     labels=["Present", "Absent"], 
                     colors=["#4CAF50", "#FF5252"],
-                    autopct="%1.0f%%", 
+                    autopct=None, 
                     startangle=90,
-                    wedgeprops=dict(width=0.4) # Donut
+                    wedgeprops=dict(width=0.4), # Donut
+                    textprops={'color': "white"}
                 )
                 ax.text(0, 0, f"{percentage:.0f}%", ha='center', va='center', fontsize=20, fontweight='bold', color="white")
                 fig.patch.set_alpha(0)
-                st.pyplot(fig, use_container_width=True)
+                st.pyplot(fig, width="stretch")
             else:
                 st.write("No class data.")
 
@@ -224,9 +225,9 @@ def show_view_attendance_panel():
                 status = "✅ Present" if date in present_dates else "❌ Absent"
                 history_data.append({"Date": date, "Status": status})
             
-            st.dataframe(pd.DataFrame(history_data), use_container_width=True)
+            st.dataframe(pd.DataFrame(history_data), width="stretch")
         else:
             st.warning("You have not attended any classes yet.")
             # Still show absents?
             history_data = [{"Date": d, "Status": "❌ Absent"} for d in sorted(all_dates, reverse=True)]
-            st.dataframe(pd.DataFrame(history_data), use_container_width=True)
+            st.dataframe(pd.DataFrame(history_data), width="stretch")
