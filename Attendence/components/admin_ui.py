@@ -89,7 +89,28 @@ def show_admin_panel():
         st.warning("No classes found.")
         return
 
-    selected_class_name = st.selectbox("📚 Select a Class", [c["class_name"] for c in classes])
+    class_names = [c["class_name"] for c in classes]
+    
+    # Persist selection across reruns
+    if "admin_selected_class" not in st.session_state:
+        st.session_state.admin_selected_class = class_names[0] if class_names else None
+
+    # Ensure selected class is still valid
+    if st.session_state.admin_selected_class not in class_names and class_names:
+        st.session_state.admin_selected_class = class_names[0]
+        
+    current_index = 0
+    if st.session_state.admin_selected_class in class_names:
+        current_index = class_names.index(st.session_state.admin_selected_class)
+
+    selected_class_name = st.selectbox(
+        "📚 Select a Class", 
+        class_names, 
+        index=current_index
+    )
+    
+    # Update state
+    st.session_state.admin_selected_class = selected_class_name
     config = next((c for c in classes if c["class_name"] == selected_class_name), None)
 
     st.markdown(f"**Current Code:** `{config['code']}`")
