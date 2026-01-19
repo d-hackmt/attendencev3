@@ -1,8 +1,8 @@
 # admin_main.py
 import streamlit as st
-from Attendence.admin import show_admin_panel
-from Attendence.analytics import show_analytics_panel
-from core.chatbot import show_chatbot_panel
+from Attendence.components.admin_ui import show_admin_panel
+from Attendence.components.analytics_ui import show_analytics_panel
+from Attendence.components.chatbot_ui import show_chatbot_panel
 
 st.set_page_config(
     page_title="Admin Dashboard",

@@ -1,4 +1,5 @@
 # Attendence/clients.py
+import streamlit as st
 from supabase import create_client
 from github import Github
 from .config import get_env
@@ -6,6 +7,7 @@ from .logger import get_logger
 
 logger = get_logger(__name__)
 
+@st.cache_resource
 def create_supabase_client():
     """
     Create and return a supabase client using st.secrets or env variables.
