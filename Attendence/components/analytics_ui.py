@@ -88,11 +88,11 @@ def show_analytics_panel():
                 fig, ax = plt.subplots(figsize=(2, 2))  # Small size
                 ax.pie(
                     [present, absent], 
-                    labels=["P", "A"], 
-                    colors=["#d4edda", "#f8d7da"],
+                    labels=["Present", "Absent"], 
+                    colors=["#4CAF50", "#FF5252"],
                     autopct="%1.0f%%", 
                     startangle=90,
-                    textprops={'fontsize': 8}
+                    textprops={'fontsize': 10, 'color': 'white'}
                 )
                 ax.axis("equal")
                 # Transparent background

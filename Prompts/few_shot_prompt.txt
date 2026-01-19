@@ -1,33 +1,149 @@
-Q: How many students were present on 2025-06-14?
-A: df['2025-06-14'].value_counts().get('P', 0)
+Question: How many students are there?
+df.shape[0]
 
-Q: Has roll number 101 attended on 2025-06-14?
-A: df.loc[df['Roll Number'] == '101', '2025-06-14'].values[0] == 'P'
+Question: What is the total number of classes?
+len([c for c in df.columns if re.match(r'\d{4}-\d{2}-\d{2}', str(c))])
 
-Q: How many total lectures has roll number 102 attended?
-A: (df[df['Roll Number'] == '102'].iloc[0].drop(['Roll Number', 'Name']) == 'P').sum()
+Question: Who was present on 2024-01-01?
+df[df['2024-01-01'] == 'P']['name'].tolist()
 
-Q: List students who were present on 2025-06-15
-A: df[df['2025-06-15'] == 'P'][['Roll Number', 'Name']]
+Question: Who was absent on 2024-01-01?
+df[df['2024-01-01'] != 'P']['name'].tolist()
 
-Q: Total number of lectures conducted
-A: len([col for col in df.columns if col not in ['Roll Number', 'Name']])
+Question: Count how many students were present on 2024-01-05.
+(df['2024-01-05'] == 'P').sum()
 
-Q: What percentage of students were present on 2025-06-14?
-A: (df['2025-06-14'].value_counts().get('P', 0) / len(df)) * 100
+Question: What is the attendance percentage of John Doe?
+(df[df['name'] == 'John Doe'].iloc[0][date_cols] == 'P').mean() * 100
 
-Q: List all dates student 105 was present
-A: (df[df['Roll Number'] == '105'].iloc[0].drop(['Roll Number', 'Name']) == 'P').index[df[df['Roll Number'] == '105'].iloc[0].drop(['Roll Number', 'Name']) == 'P'].tolist()
+Question: List students with 100% attendance.
+df[df[date_cols].apply(lambda x: (x == 'P').all(), axis=1)]['name'].tolist()
 
-Q: Show students absent on 2025-06-15
-A: df[df['2025-06-15'] != 'P'][['Roll Number', 'Name']]
+Question: Who has less than 75% attendance?
+df[df[date_cols].apply(lambda x: (x == 'P').mean() < 0.75, axis=1)]['name'].tolist()
 
-Q: Show attendance summary for all students
-A: df.drop(columns=['Roll Number', 'Name']).eq('P').sum(axis=1)
+Question: Which date had the highest attendance?
+date_cols[df[date_cols].apply(lambda x: (x == 'P').sum()).argmax()]
 
-Q: Who has full attendance?
-A: df[df.drop(columns=['Roll Number', 'Name']).eq('P').all(axis=1)][['Roll Number', 'Name']]
+Question: Which date had the lowest attendance?
+date_cols[df[date_cols].apply(lambda x: (x == 'P').sum()).argmin()]
 
-Q: Who has lowest attendance?
-A: df.assign(total=df.drop(columns=['Roll Number', 'Name']).eq('P').sum(axis=1)).sort_values('total').head(1)[['Roll Number', 'Name']]
+Question: How many students were distinctively absent on 2024-01-02?
+(df['2024-01-02'] != 'P').sum()
 
+Question: Show me the record of roll number 101.
+df[df['roll_number'] == 101].to_dict('records')[0]
+
+Question: Who are the top 5 students by attendance?
+df.assign(att_pct=df[date_cols].apply(lambda x: (x == 'P').mean(), axis=1)).nlargest(5, 'att_pct')['name'].tolist()
+
+Question: Who are the bottom 3 students by attendance?
+df.assign(att_pct=df[date_cols].apply(lambda x: (x == 'P').mean(), axis=1)).nsmallest(3, 'att_pct')['name'].tolist()
+
+Question: Did more students attend on 2024-01-01 or 2024-01-02?
+'2024-01-01' if (df['2024-01-01'] == 'P').sum() > (df['2024-01-02'] == 'P').sum() else '2024-01-02'
+
+Question: List all dates where attendance was above 90%.
+[d for d in date_cols if (df[d] == 'P').mean() > 0.9]
+
+Question: What is the average attendance of the whole class?
+(df[date_cols] == 'P').stack().mean() * 100
+
+Question: How many students are absent today?
+(df[latest_date] != 'P').sum()
+
+Question: Who has missed 3 consecutive classes?
+"This requires complex logic not suitable for one-liners."
+
+Question: Find students with name starting with 'A'.
+df[df['name'].str.startswith('A')]['name'].tolist()
+
+Question: Count total present marks for everyone.
+df[date_cols].apply(lambda x: (x == 'P').sum(), axis=1).tolist()
+
+Question: Get the list of dates.
+[c for c in df.columns if re.match(r'\d{4}-\d{2}-\d{2}', str(c))]
+
+Question: Was roll number 5 present on the first class?
+"Yes" if df[df['roll_number'] == 5].iloc[0][date_cols[0]] == "P" else "No"
+
+Question: How many classes has Alice missed?
+(df[df['name'] == 'Alice'].iloc[0][date_cols] != 'P').sum()
+
+Question: Who has exactly 50% attendance?
+df[df[date_cols].apply(lambda x: (x == 'P').mean() == 0.5, axis=1)]['name'].tolist()
+
+Question: Is there any student with 0% attendance?
+df[df[date_cols].apply(lambda x: (x == 'P').sum() == 0, axis=1)]['name'].tolist()
+
+Question: What is the attendance of the student with roll number 10?
+(df[df['roll_number'] == 10].iloc[0][date_cols] == 'P').mean() * 100
+
+Question: List names of students present on 2024-01-10.
+df[df['2024-01-10'] == 'P']['name'].tolist()
+
+Question: How many people attended on the last recorded date?
+(df[date_cols[-1]] == 'P').sum()
+
+Question: Which student attended the most classes?
+df.loc[df[date_cols].apply(lambda x: (x == 'P').sum(), axis=1).idxmax()]['name']
+
+Question: Count absent students on 2024-02-01.
+(df['2024-02-01'] != 'P').sum()
+
+Question: What is the class average on 2024-01-15?
+(df['2024-01-15'] == 'P').mean() * 100
+
+Question: Who was absent on both 2024-01-01 and 2024-01-02?
+df[(df['2024-01-01'] != 'P') & (df['2024-01-02'] != 'P')]['name'].tolist()
+
+Question: Who was present on 2024-01-01 but absent on 2024-01-02?
+df[(df['2024-01-01'] == 'P') & (df['2024-01-02'] != 'P')]['name'].tolist()
+
+Question: List students who have attended at least one class.
+df[df[date_cols].apply(lambda x: (x == 'P').any(), axis=1)]['name'].tolist()
+
+Question: List students who have never attended.
+df[df[date_cols].apply(lambda x: (x != 'P').all(), axis=1)]['name'].tolist()
+
+Question: How many students have name length greater than 5?
+(df['name'].str.len() > 5).sum()
+
+Question: Show attendance for roll number 20 on 2024-01-20.
+df[df['roll_number'] == 20].iloc[0]['2024-01-20']
+
+Question: Are there more than 50 students?
+len(df) > 50
+
+Question: Is attendance on 2024-01-01 better than 2024-01-02?
+(df['2024-01-01'] == 'P').sum() > (df['2024-01-02'] == 'P').sum()
+
+Question: Who is the last student in the list?
+df.iloc[-1]['name']
+
+Question: What is the roll number of John?
+df[df['name'] == 'John']['roll_number'].values[0]
+
+Question: Count students present in all classes.
+(df[date_cols] == 'P').all(axis=1).sum()
+
+Question: Find the date with attendance closest to 80%.
+date_cols[abs(df[date_cols].apply(lambda x: (x == 'P').mean()) - 0.8).argmin()]
+
+Question: How many classes were held in January?
+len([d for d in date_cols if '-01-' in d])
+
+Question: Who has attendance between 50% and 70%?
+df[df[date_cols].apply(lambda x: 0.5 <= (x == 'P').mean() <= 0.7, axis=1)]['name'].tolist()
+
+Question: What is the total number of present marks in the database?
+(df[date_cols] == 'P').sum().sum()
+
+Question: List columns that are not dates.
+[c for c in df.columns if not re.match(r'\d{4}-\d{2}-\d{2}', str(c))]
+
+Question: Check if '2024-02-30' is a valid column.
+'2024-02-30' in df.columns
+
+Question: Return the whole dataframe as a dict.
+df.to_dict('records')

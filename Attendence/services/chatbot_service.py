@@ -38,33 +38,65 @@ class AppState(BaseModel):
     answer: Optional[str] = None
 
 
+# --- Context Engineering ---
+def generate_context_summary(df: pd.DataFrame) -> str:
+    """
+    Generates a rich semantic summary of the DataFrame to help the LLM understand
+    the structure (Students vs Dates) and key statistics.
+    """
+    total_students = len(df)
+    
+    # Identify Date Columns (YYYY-MM-DD)
+    date_cols = [c for c in df.columns if re.match(r"\d{4}-\d{2}-\d{2}", str(c))]
+    date_cols.sort()
+    
+    total_classes = len(date_cols)
+    start_date = date_cols[0] if date_cols else "N/A"
+    end_date = date_cols[-1] if date_cols else "N/A"
+    
+    # Identify Metadata Columns
+    meta_cols = [c for c in df.columns if c not in date_cols]
+    
+    summary = f"""
+    ### Dataset Structure (Wide Format)
+    - **Rows**: Each row represents a SINGLE STUDENT.
+    - **Metadata Columns**: {', '.join(map(str, meta_cols))} (Use these to identify students)
+    - **Data Columns**: {total_classes} columns representing class dates from {start_date} to {end_date}.
+    
+    ### Statistics
+    - **Total Students**: {total_students}
+    - **Total Class Days**: {total_classes}
+    - **Latest Date**: {end_date}
+    
+    ### Attendance Codes
+    - 'P' = Present
+    - '' (Empty String) or 'A' or NaN = Absent
+    """
+    return summary
+
 # --- Prompt Builder ---
 def build_prompt(question: str, df: pd.DataFrame) -> str:
-    schema = df.dtypes.to_string()
-    head = df.head(2).to_string(index=False)
+    context_summary = generate_context_summary(df)
+    head_sample = df.head(3).to_string(index=False)
     
     return f"""
-You are a pandas expert. You are given a DataFrame named `df` which tracks student attendance.
-Each row is a student with a roll number, name, and dates (YYYY-MM-DD) as columns.
-'P' means present; '' (empty string) means absent.
+You are a pandas expert. You are given a DataFrame named `df` tracking student attendance.
 
-DataFrame schema:
-{schema}
+{context_summary}
 
-Sample data:
-{head}
+### Sample Data (First 3 rows)
+{head_sample}
 
-Your task is to write one line of Python code using pandas to answer the following question:
+### Task
+Write a SINGLE line of Python code using pandas to answer the question.
+- The `df` is already loaded.
+- `date_cols` list is NOT pre-defined; filter columns using regex if needed (e.g. `[c for c in df.columns if re.match(r'\d{4}-\d{2}-\d{2}', str(c))]`).
+- Return ONLY the code. No markdown, no explanations.
 
+### Examples
 {EXAMPLES}
 
-Question: {question}
-
-Rules:
-- Only use pandas methods, not print statements.
-- Use df as the DataFrame name.
-- Do NOT modify df.
-- Only return the line of code (nothing else).
+### Question: {question}
 """
 
 
