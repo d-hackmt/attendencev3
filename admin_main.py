@@ -18,13 +18,23 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Initialize session state for login if not present
+if "admin_logged_in" not in st.session_state:
+    st.session_state.admin_logged_in = False
+
 admin_tab, analytics_tab , chatbot_tab = st.tabs(["🧑‍🏫 Admin Panel", "📊 Analytics", "🤖 Chatbot"])
 
 with admin_tab:
     show_admin_panel()
 
 with analytics_tab:
-    show_analytics_panel()
+    if st.session_state.admin_logged_in:
+        show_analytics_panel()
+    else:
+        st.info("🔒 Please login in the 'Admin Panel' tab to view Analytics.")
 
 with chatbot_tab:
-    show_chatbot_panel()
+    if st.session_state.admin_logged_in:
+        show_chatbot_panel()
+    else:
+        st.info("🔒 Please login in the 'Admin Panel' tab to use the Chatbot.")
